@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SC Network | Project Hub</title>
+    <link id="dynamic-favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📂</text></svg>">
+    
+    <style>
+        /* --- GLOBAL RESET & VARS --- */
+        :root {
+            --bg-deep: #0f1014;
+            --accent: #fa1e4e;
+            --accent-sec: #00d2ff;
+            --text: #ffffff;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; height: 100vh; width: 100vw; background: #050505; color: white; }
+        
+        button { cursor: pointer; }
+
+        /* --- LAYER 0: PROJECT HUB (New) --- */
+        #project-hub {
+            width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 80px;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            z-index: 20000; position: absolute; top: 0; left: 0; transition: opacity 0.5s;
+        }
+
+        .hub-title { font-size: 40px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+        .hub-subtitle { color: #666; margin-bottom: 50px; font-size: 14px; }
+
+        .projects-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 900px; width: 90%;
+        }
+
+        .project-card {
+            background: var(--glass); border: 1px solid var(--border); padding: 25px; border-radius: 12px;
+            transition: 0.3s; position: relative; overflow: hidden; min-height: 180px; display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        .project-card:hover { transform: translateY(-5px); border-color: #333; }
+        
+        /* Locked Projects */
+        .project-card.locked { opacity: 0.5; cursor: not-allowed; }
+        .project-card.locked::after {
+            content: 'COMING SOON'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
+            border: 2px solid #555; padding: 5px 15px; color: #555; font-weight: bold; font-size: 12px; letter-spacing: 2px;
+        }
+
+        /* Active Project (Why AI) */
+        .project-card.active { border-color: var(--accent-sec); cursor: pointer; background: linear-gradient(to bottom right, rgba(0, 210, 255, 0.05), rgba(0,0,0,0)); }
+        .project-card.active:hover { box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); }
+        .project-card.active .p-icon { font-size: 30px; margin-bottom: 10px; }
+        .project-card.active h3 { margin: 0; color: white; }
+        .project-card.active p { color: #888; font-size: 13px; margin-top: 5px; }
+
+        /* Modal Popup */
+        #hub-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 25000; display: none; justify-content: center; align-items: center;
+        }
+        .modal-box {
+            background: #151515; border: 1px solid #333; width: 400px; padding: 30px; border-radius: 16px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+        .modal-btns { display: flex; gap: 10px; margin-top: 25px; }
+        .m-btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 600; font-size: 13px; transition: 0.2s; }
+        .btn-dl { background: #333; color: white; border: 1px solid #444; }
+        .btn-dl:hover { background: #444; }
+        .btn-go { background: var(--accent-sec); color: #000; }
+        .btn-go:hover { opacity: 0.9; }
+
+
+        /* --- LAYER 1: WHY AI (The Decoy) --- */
+        #lock-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f4f4f9; display: none; flex-direction: column; align-items: center;
+            z-index: 9999; transition: opacity 1s ease; color: #333;
+        }
+        
+        .ai-header { width: 100%; height: 60px; background: white; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 0 20px; }
+        .ai-logo { font-weight: 700; font-size: 20px; color: #333; display: flex; align-items: center; gap: 10px; }
+        
+        #chat-container { flex: 1; width: 100%; max-width: 800px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .bubble { max-width: 70%; padding: 10px 15px; border-radius: 18px; font-size: 15px; line-height: 1.4; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .bubble.ai { background: #e5e5ea; color: #000; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .bubble.user { background: #007aff; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .input-area { width: 100%; max-width: 800px; padding: 20px; background: transparent; display: flex; gap: 10px; }
+        #user-input, #email-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #ccc; outline: none; font-size: 16px; }
+        #send-btn { background: #007aff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; }
+
+        /* Captcha */
+        #captcha-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 10000; }
+        .captcha-box { background: white; padding: 20px; border-radius: 8px; width: 320px; text-align: center; color: #000; }
+        .captcha-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 15px 0; }
+        .captcha-img { width: 100%; height: 80px; object-fit: cover; cursor: pointer; border: 3px solid transparent; opacity: 0.8; }
+        .captcha-img.selected { border-color: #007aff; opacity: 1; transform: scale(0.95); }
+        @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- LAYER 2: RUN.OS GX (The Reward) --- */
+        #os-interface { display: none; height: 100vh; width: 100vw; background: #0f1014; color: var(--text); transition: background 0.5s ease; position:absolute; top:0; left:0; z-index: 10; }
+        body.theme-deepsea #os-interface { background: linear-gradient(to bottom right, #000428, #004e92); }
+        body.theme-sc #os-interface { background: linear-gradient(135deg, #2b1055 0%, #7597de 50%, #fea47f 100%); }
+        .sc-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Arial Black', sans-serif; font-size: 80px; text-transform: uppercase; background: linear-gradient(to bottom, #fff, #ccc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 5px 15px rgba(0,0,0,0.3); pointer-events: none; opacity: 0; transition: opacity 0.5s; z-index: 0; text-align: center; }
+        body.theme-sc .sc-overlay { opacity: 0.3; }
+        
+        #status-bar { height: 35px; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--accent); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 13px; z-index: 5000; position: relative; }
+        #desktop { height: calc(100vh - 115px); position: relative; z-index: 10; width: 100%; }
+        #dock-container { position: absolute; bottom: 15px; width: 100%; display: flex; justify-content: center; z-index: 6000; }
+        #dock { background: rgba(20, 20, 20, 0.9); backdrop-filter: blur(15px); padding: 8px 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; box-shadow: 0 0 20px rgba(250, 30, 78, 0.1); }
+        .app-icon { width: 48px; height: 48px; border-radius: 10px; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; transition: 0.2s; position: relative; border: 1px solid transparent; }
+        .app-icon:hover { transform: translateY(-8px) scale(1.1); background: #333; border-color: var(--accent); }
+        .app-icon.active::after { content: ''; position: absolute; bottom: -4px; width: 20px; height: 3px; background: var(--accent); border-radius: 2px; }
+        
+        .window { position: absolute; background: #151515; border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; min-width: 300px; min-height: 200px; animation: openWin 0.2s ease-out; }
+        @keyframes openWin { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .window-header { background: #1a1a1a; padding: 8px 12px; display: flex; align-items: center; border-bottom: 1px solid #333; user-select: none; }
+        .window-controls { display: flex; gap: 8px; margin-right: 15px; }
+        .win-btn { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .close { background: #ff5f56; } .minimize { background: #ffbd2e; } .maximize { background: #27c93f; }
+        .window-title { flex: 1; font-size: 12px; color: #aaa; text-align: center; pointer-events: none; }
+        .window-content { flex: 1; background: #fff; position: relative; }
+        .window-content.dark { background: #0f1014; color: white; }
+        iframe { width: 100%; height: 100%; border: none; background: #fff; }
+        
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; padding: 20px; }
+        .store-card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: 0.2s; }
+        .store-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .store-icon { font-size: 32px; margin-bottom: 10px; }
+        .store-name { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fff; }
+        .store-btn { background: var(--accent); color: white; border: none; padding: 5px 15px; border-radius: 4px; font-size: 11px; margin-top: auto; cursor: pointer;}
+        .sb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; }
+        .sb-btn { background: #252525; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 15px 5px; cursor: pointer; }
+        .sb-btn:active { border-color: var(--accent-sec); color: var(--accent-sec); }
+        .cloak-list { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .cloak-item { background: #1e1e1e; padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 15px; cursor: pointer; }
+        .cloak-item:hover { background: #252525; }
+    </style>
+</head>
+<body class="theme-deepsea">
+
+    <div id="project-hub">
+        <div class="hub-title">SC NETWORK</div>
+        <div class="hub-subtitle">Internal Projects Dashboard</div>
+
+        <div class="projects-grid">
+            <div class="project-card locked">
+                <div style="font-size:30px; margin-bottom:10px;">🌌</div>
+                <h3>Project Zenith</h3>
+                <p>Next-gen cloud infrastructure.</p>
+            </div>
+
+            <div class="project-card locked">
+                <div style="font-size:30px; margin-bottom:10px;">🔮</div>
+                <h3>Vortex Core</h3>
+                <p>Quantum simulation engine.</p>
+            </div>
+
+            <div class="project-card active" onclick="openHubPopup()">
+                <div class="p-icon">🧠</div>
+                <h3>Why AI</h3>
+                <p>The Future of Reasoning. <br><span style="color:var(--accent-sec); font-size:11px;">v2.0 STABLE</span></p>
+            </div>
+
+            <div class="project-card locked">
+                <div style="font-size:30px; margin-bottom:10px;">💠</div>
+                <h3>Hyper-Link</h3>
+                <p>Neural data transfer.</p>
+            </div>
+             <div class="project-card locked">
+                <div style="font-size:30px; margin-bottom:10px;">🧱</div>
+                <h3>Firewall Z</h3>
+                <p>Security protocols.</p>
+            </div>
+             <div class="project-card locked">
+                <div style="font-size:30px; margin-bottom:10px;">📦</div>
+                <h3>Archive</h3>
+                <p>Legacy systems.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="hub-modal">
+        <div class="modal-box">
+            <h2 style="margin-top:0;">Launch Why AI?</h2>
+            <p style="color:#aaa; font-size:14px; line-height:1.5;">You are attempting to access a secure prototype. You can download the source package or continue in your browser.</p>
+            <div class="modal-btns">
+                <button class="m-btn btn-dl" onclick="downloadSite()">Download File</button>
+                <button class="m-btn btn-go" onclick="enterWhyAI()">Open in Browser</button>
+            </div>
+            <div style="margin-top:15px; font-size:11px; color:#555; cursor:pointer; text-decoration:underline;" onclick="closeHubPopup()">Cancel</div>
+        </div>
+    </div>
+
+
+    <div id="lock-screen">
+        <div class="ai-header">
+            <div class="ai-logo"><span>🧠</span> Why AI</div>
+        </div>
+        <div id="chat-container">
+            <div class="bubble ai">Hello. I am Why AI. How can I help you navigate the future today?</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Message Why AI..." autocomplete="off">
+            <input type="email" id="email-input" placeholder="Enter your email..." style="display:none;">
+            <button id="send-btn">➤</button>
+        </div>
+    </div>
+
+    <div id="captcha-modal">
+        <div class="captcha-box">
+            <h3>Human Verification</h3>
+            <p style="font-size:12px; color:#666;">Select 2 Cars and 1 Meme</p>
+            <div class="captcha-grid" id="captcha-grid"></div>
+            <button onclick="verifyCaptcha()" style="background:#007aff; color:white; border:none; padding:8px 20px; border-radius:5px; cursor:pointer;">Verify</button>
+        </div>
+    </div>
+
+    <div id="os-interface">
+        <div class="sc-overlay">SC<br><span>Network</span></div>
+        <div id="status-bar">
+            <div style="color: var(--accent); font-weight: 800; letter-spacing: 1px;">RUN.OS <span style="color:#fff; opacity:0.5;">GX</span></div>
+            <div style="display:flex; gap:20px; font-family: monospace;">
+                <span id="clock">12:00</span>
+                <span>🔋 100%</span>
+                <span>📶 5G</span>
+            </div>
+        </div>
+        <div id="desktop"></div>
+        <div id="dock-container"><div id="dock"></div></div>
+    </div>
+
+    <script>
+        // ==================== HUB LOGIC (NEW) ====================
+        function openHubPopup() {
+            document.getElementById('hub-modal').style.display = 'flex';
+        }
+
+        function closeHubPopup() {
+            document.getElementById('hub-modal').style.display = 'none';
+        }
+
+        function downloadSite() {
+            // Creates a blob of the CURRENT html document and triggers download
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Why_AI_Secure_Build.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Optional: Close modal after download
+            closeHubPopup();
+        }
+
+        function enterWhyAI() {
+            const hub = document.getElementById('project-hub');
+            const modal = document.getElementById('hub-modal');
+            const whyAI = document.getElementById('lock-screen');
+            
+            modal.style.display = 'none';
+            hub.style.opacity = '0';
+            setTimeout(() => {
+                hub.style.display = 'none';
+                whyAI.style.display = 'flex';
+                // Change title to match the decoy
+                document.title = "Why AI - The Future of Reasoning";
+                // Change Favicon to brain
+                let link = document.querySelector("link[rel*='icon']");
+                link.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>";
+            }, 500);
+        }
+
+        // ==================== SECURITY & OS LOGIC (PREVIOUS) ====================
+        
+        let securityStep = 0;
+        let captchaSelection = [];
+        const chat = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const emailInput = document.getElementById('email-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        const STR_TRIGGER = "hey, can you please show me my classes for this week, i kinda forgot them.";
+        const STR_URGENCY = "please speed i need this!";
+        const STR_CODE = "2015";
+        const FINAL_PASS = "runosgx"; 
+
+        userInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleInput(); });
+        emailInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleInput(); });
+        sendBtn.addEventListener('click', handleInput);
+
+        function addBubble(text, type) {
+            const b = document.createElement('div');
+            b.className = `bubble ${type}`;
+            b.innerText = text;
+            chat.appendChild(b);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function handleInput() {
+            let val = "";
+            if(securityStep === 2) {
+                val = emailInput.value;
+                if(!val) return;
+                emailInput.value = '';
+                addBubble("Sending verification code to " + val + "...", 'user');
+                setTimeout(() => {
+                    addBubble("Email sent. Please enter the 4-digit code.", 'ai');
+                    emailInput.style.display = 'none'; userInput.style.display = 'block'; userInput.focus();
+                    securityStep = 3;
+                }, 1500);
+                return;
+            }
+
+            val = userInput.value.trim();
+            if(!val) return;
+            addBubble(val, 'user');
+            userInput.value = '';
+
+            setTimeout(() => {
+                const normVal = val.toLowerCase().replace(/[^\w\s]/gi, '');
+                const target1 = STR_TRIGGER.replace(/[^\w\s]/gi, '');
+                const target2 = STR_URGENCY.replace(/[^\w\s]/gi, '');
+
+                if (securityStep === 0) {
+                    if (normVal === target1) { addBubble("Sorry unable to respond because of global traffic.", 'ai'); securityStep = 1; } 
+                    else { addBubble("I am an LLM trained to assist with general queries. How can I help?", 'ai'); }
+                } 
+                else if (securityStep === 1) {
+                    if (normVal === target2) {
+                        addBubble("Sorry, I can not recite this information without authenticating the user. Please enter your email below so we can email you a verification code.", 'ai');
+                        userInput.style.display = 'none'; emailInput.style.display = 'block'; emailInput.focus(); securityStep = 2;
+                    } else { addBubble("Global traffic is still high. Please try again later.", 'ai'); }
+                }
+                else if (securityStep === 3) {
+                    if (val === STR_CODE) { launchCaptcha(); } 
+                    else { userInput.disabled = true; sendBtn.disabled = true; }
+                }
+                else if (securityStep === 5) {
+                    if (val.toLowerCase() === FINAL_PASS) { addBubble("Authenticating...", 'ai'); setTimeout(grantAccess, 1500); } 
+                    else { addBubble("Incorrect. Access Denied.", 'ai'); }
+                }
+            }, 600);
+        }
+
+        const captchaImages = [
+            { type: 'car', src: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=200&q=80' },
+            { type: 'meme', src: 'https://media.istockphoto.com/id/1157655660/photo/generic-red-cat-is-eating-from-white-bowl.jpg?s=612x612&w=0&k=20&c=co--w_6LqG-lYmF-zF25s0n99c5JjCgJ5rXWjX4sX4s=' },
+            { type: 'car', src: 'https://images.unsplash.com/photo-1542362567-b07e527075f2?w=200&q=80' },
+            { type: 'meme', src: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=200&q=80' },
+            { type: 'car', src: 'https://images.unsplash.com/photo-1503376763036-066120622c74?w=200&q=80' },
+            { type: 'meme', src: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=200&q=80' },
+        ];
+
+        function launchCaptcha() {
+            addBubble("Please complete this captcha.", 'ai');
+            const modal = document.getElementById('captcha-modal');
+            const grid = document.getElementById('captcha-grid');
+            grid.innerHTML = '';
+            captchaSelection = [];
+            const shuffled = captchaImages.sort(() => 0.5 - Math.random());
+            shuffled.forEach((img) => {
+                const el = document.createElement('img');
+                el.src = img.src; el.className = 'captcha-img'; el.dataset.type = img.type;
+                el.onclick = function() { this.classList.toggle('selected'); }
+                grid.appendChild(el);
+            });
+            setTimeout(() => modal.style.display = 'flex', 1000);
+        }
+
+        function verifyCaptcha() {
+            const selected = document.querySelectorAll('.captcha-img.selected');
+            let carCount = 0, memeCount = 0;
+            selected.forEach(el => { if (el.dataset.type === 'car') carCount++; if (el.dataset.type === 'meme') memeCount++; });
+            const modal = document.getElementById('captcha-modal');
+            if (carCount === 2 && memeCount === 1 && selected.length === 3) {
+                modal.style.display = 'none';
+                addBubble("Verification Successful.", 'ai');
+                setTimeout(() => {
+                    addBubble("Here are your classes for the week:\n\n1. Robotics 101\n2. Unified Physics\n3. Neurology\n4. Oceanography\n5. Statistics\n6. Geography\n7. Xylophone History", 'ai');
+                    securityStep = 5;
+                }, 1000);
+            } else { document.body.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100vh; background:black; color:red; font-family:monospace;"><h1>LOADING ERROR: 0x0000DEAD</h1></div>`; }
+        }
+
+        function grantAccess() {
+            const lock = document.getElementById('lock-screen');
+            const os = document.getElementById('os-interface');
+            lock.style.opacity = '0';
+            setTimeout(() => {
+                lock.style.display = 'none'; os.style.display = 'block';
+                document.title = "run.os GX";
+                // Change Favicon to Wave
+                let link = document.querySelector("link[rel*='icon']");
+                link.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>";
+                initOS();
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const o = ctx.createOscillator(); const g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.frequency.setValueAtTime(200, ctx.currentTime); o.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 1);
+                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
+                o.start(); o.stop(ctx.currentTime + 1);
+            }, 1000);
+        }
+
+        // ==================== OS LOGIC ====================
+        const sys = {
+            zIndex: 100,
+            apps: [
+                { id: 'browser', name: 'Web Proxy', icon: '🌐', color: '#00d2ff' },
+                { id: 'games', name: 'Games', icon: '🎮', color: '#fa1e4e' },
+                { id: 'store', name: 'App Store', icon: '🛍️', color: '#a29bfe' },
+                { id: 'sounds', name: 'SFX Board', icon: '🔊', color: '#fdcb6e' },
+                { id: 'cloak', name: 'Cloak', icon: '🕵️', color: '#636e72' },
+                { id: 'settings', name: 'Settings', icon: '⚙️', color: '#dfe6e9' }
+            ],
+            store: [
+                { id: 'yt', name: 'YouTube', icon: '📺', url: 'https://www.youtube.com/embed?autoplay=0' },
+                { id: 'crazy', name: 'CrazyGames', icon: '🕹️', url: 'https://www.crazygames.com/' },
+                { id: 'clockwork', name: 'Clockwork OS', icon: '🕰️', url: 'https://happiness-skydiving.vercel.app/' },
+                { id: 'nautilus', name: 'Nautilus OS', icon: '🐚', url: 'https://nautilus-os.vercel.app/' },
+                { id: 'zenith', name: 'Zenith', icon: '🏔️', url: 'https://zenithz.vercel.app/' },
+                { id: 'vortex', name: 'Vortex', icon: '🌀', url: 'https://vortexos.net/' },
+                { id: 'anura', name: 'Anura OS', icon: '🐸', url: 'https://anura.pro/' },
+                { id: 'aaron', name: 'Aaron OS', icon: '🅰️', url: 'https://aaronos.dev/AaronOS/aosBeta.php' },
+                { id: 'terbium1', name: 'Terbium 1.9', icon: '🌑', url: 'https://terbium-46q.pages.dev/' },
+                { id: 'terbium7', name: 'Terbium 7.9', icon: '🌒', url: 'https://terbiumon.top/' },
+                { id: 'zenithhub', name: 'Zenith Hub', icon: '🛸', url: 'https://duck-educationyay.vercel.app/start.html' },
+                { id: 'dotgui', name: 'DotGui', icon: '💻', url: 'https://hehelol2020cringememe.vercel.app/start.html' },
+                { id: 't9os', name: 'T9 OS', icon: '📠', url: 'https://t9os.vercel.app/' }
+            ],
+            games: [
+                { name: "Ragdoll Archers", url: "https://poki.com/en/g/ragdoll-archers", icon: "🏹" },
+                { name: "Slope", url: "https://kbhgames.com/game/slope-game", icon: "⛷️" },
+                { name: "EaglerCraft", url: "https://eaglercraft.com/mc/1.8.8/", icon: "⛏️" },
+                { name: "Retro Bowl", url: "https://retrobowl.me/", icon: "🏈" },
+                { name: "1v1.LOL", url: "https://1v1.lol/", icon: "🔫" },
+                { name: "Subway Surfers", url: "https://poki.com/en/g/subway-surfers", icon: "🏃" },
+                { name: "Geometry Dash", url: "https://geometry-dash.co/", icon: "🟨" },
+                { name: "Basketball Stars", url: "https://poki.com/en/g/basketball-stars", icon: "🏀" },
+                { name: "BitLife", url: "https://bitlifeonline.com/", icon: "👶" },
+                { name: "Cookie Clicker", url: "https://cookieclicker.ee/", icon: "🍪" }
+            ]
+        };
+
+        function initOS() {
+            renderDock();
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+
+        function renderDock() {
+            const dock = document.getElementById('dock');
+            dock.innerHTML = '';
+            sys.apps.forEach(app => {
+                const el = document.createElement('div');
+                el.className = 'app-icon'; el.id = `dock-${app.id}`; el.innerHTML = app.icon; el.title = app.name;
+                el.onclick = () => openApp(app.id);
+                dock.appendChild(el);
+            });
+        }
+
+        function openApp(id, extraUrl = null, extraTitle = null) {
+            const elId = `win-${id}`;
+            const existing = document.getElementById(elId);
+            if (existing) { toFront(existing); return; }
+
+            const win = document.createElement('div');
+            win.className = 'window'; win.id = elId; win.style.zIndex = ++sys.zIndex;
+            win.style.left = (50 + Math.random() * 50) + 'px'; win.style.top = (50 + Math.random() * 50) + 'px';
+
+            let title = extraTitle || sys.apps.find(a => a.id === id)?.name || "App";
+            let content = "";
+            let w = "600px", h = "450px";
+            let isDark = false;
+
+            if (id === 'browser') { w = "850px"; h = "550px"; content = `<iframe src="https://55gms.com/"></iframe>`; } 
+            else if (id === 'games') { w = "700px"; h = "500px"; isDark = true; content = renderGames(); }
+            else if (id === 'store') { w = "600px"; h = "500px"; isDark = true; content = renderStore(); }
+            else if (id === 'sounds') { w = "400px"; h = "500px"; isDark = true; content = renderSounds(); }
+            else if (id === 'cloak') { w = "400px"; h = "400px"; isDark = true; content = renderCloak(); }
+            else if (id === 'settings') { w = "350px"; h = "300px"; isDark = true; content = renderSettings(); }
+            else if (extraUrl) { w = "900px"; h = "600px"; content = `<iframe src="${extraUrl}"></iframe>`; }
+
+            win.innerHTML = `
+                <div class="window-header" onmousedown="dragStart(event, '${elId}')">
+                    <div class="window-controls">
+                        <div class="win-btn close" onclick="closeWin('${elId}')"></div>
+                        <div class="win-btn minimize"></div>
+                        <div class="win-btn maximize" onclick="toggleMax('${elId}')"></div>
+                    </div>
+                    <div class="window-title">${title}</div>
+                </div>
+                <div class="window-content ${isDark ? 'dark' : ''}">${content}</div>
+            `;
+            document.getElementById('desktop').appendChild(win);
+            win.onmousedown = () => toFront(win);
+            document.getElementById(`dock-${id}`)?.classList.add('active');
+        }
+
+        function closeWin(id) { document.getElementById(id).remove(); const rawId = id.replace('win-', ''); document.getElementById(`dock-${rawId}`)?.classList.remove('active'); }
+        function toFront(el) { el.style.zIndex = ++sys.zIndex; }
+        function toggleMax(id) {
+            const win = document.getElementById(id);
+            if(win.style.width === '100%') { win.style.width = win.dataset.w; win.style.height = win.dataset.h; win.style.top = win.dataset.t; win.style.left = win.dataset.l; } 
+            else { win.dataset.w = win.style.width; win.dataset.h = win.style.height; win.dataset.t = win.style.top; win.dataset.l = win.style.left; win.style.width = '100%'; win.style.height = 'calc(100% - 35px)'; win.style.top = '0'; win.style.left = '0'; }
+        }
+
+        function renderGames() { return `<div class="store-grid">${sys.games.map(g => `<div class="store-card" onclick="openApp('app-${Math.random()}', '${g.url}', '${g.name}')"><div class="store-icon">${g.icon}</div><div class="store-name">${g.name}</div><button class="store-btn">PLAY</button></div>`).join('')}</div>`; }
+        function renderStore() { return `<div class="store-grid">${sys.store.map(a => `<div class="store-card"><div class="store-icon">${a.icon}</div><div class="store-name">${a.name}</div><button class="store-btn" onclick="installAndOpen('${a.id}', '${a.url}', '${a.name}', '${a.icon}')">INSTALL</button></div>`).join('')}</div>`; }
+        function renderSounds() { const sounds = [{id:'vine', l:'Vine 💥'}, {id:'airhorn', l:'Airhorn 📢'}, {id:'bruh', l:'Bruh 🗿'}, {id:'discord', l:'Discord 📞'}, {id:'error', l:'Win Error ❌'}, {id:'fart', l:'Reverb 💨'}]; return `<div class="sb-grid">${sounds.map(s => `<button class="sb-btn" onmousedown="playSfx('${s.id}')">${s.l}</button>`).join('')}</div>`; }
+        function renderCloak() { return `<div class="cloak-list"><div class="cloak-item" onclick="setCloak('Google')"><span style="font-size:24px">G</span> <b>Google Search</b></div><div class="cloak-item" onclick="setCloak('Drive')"><span style="font-size:24px">📂</span> <b>Google Drive</b></div><div class="cloak-item" onclick="panic()"><span style="font-size:24px">🚨</span> <b>PANIC (Blank)</b></div></div>`; }
+        function renderSettings() { return `<div style="padding:20px;"><h3>Appearance</h3><button onclick="setTheme('deepsea')" style="padding:10px; margin-right:5px; background:#004e92; color:white; border:none;">Deep Sea</button><button onclick="setTheme('sc')" style="padding:10px; background:#fea47f; color:black; border:none;">SC Network</button></div>`; }
+        
+        function installAndOpen(id, url, name, icon) { if (!sys.apps.find(a => a.id === id)) { sys.apps.push({ id: id, name: name, icon: icon, color: '#ffffff' }); renderDock(); } openApp(id, url, name); }
+        function setTheme(name) { document.body.className = `theme-${name}`; }
+        function setCloak(type) {
+            let title = "run.os", icon = "";
+            if (type === 'Google') { title = "Google"; icon = "https://www.google.com/favicon.ico"; }
+            if (type === 'Drive') { title = "My Drive"; icon = "https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png"; }
+            document.title = title;
+            let link = document.querySelector("link[rel*='icon']"); link.href = icon;
+        }
+        function panic() { const win = window.open(); win.document.body.innerHTML = '<iframe src="https://google.com" style="width:100%;height:100vh;border:none;"></iframe>'; window.location.href = "about:blank"; }
+
+        const AuC = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AuC();
+        function playSfx(id) {
+            const t = ctx.currentTime; const o = ctx.createOscillator(); const g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            if(id === 'vine') { o.frequency.value = 80; o.frequency.exponentialRampToValueAtTime(1, t+0.5); o.start(t); o.stop(t+0.5); }
+            else { o.frequency.value = 440; g.gain.value = 0.1; o.start(t); o.stop(t+0.1); }
+        }
+
+        let dragItem = null, dx = 0, dy = 0;
+        function dragStart(e, id) { if(e.target.closest('.window-controls')) return; dragItem = document.getElementById(id); if(dragItem.style.width === '100%') return; const r = dragItem.getBoundingClientRect(); dx = e.clientX - r.left; dy = e.clientY - r.top; window.addEventListener('mousemove', dragMove); window.addEventListener('mouseup', dragEnd); }
+        function dragMove(e) { if(!dragItem)return; e.preventDefault(); dragItem.style.left=(e.clientX-dx)+'px'; dragItem.style.top=(e.clientY-dy)+'px'; }
+        function dragEnd() { window.removeEventListener('mousemove', dragMove); dragItem = null; }
+
+    </script>
+</body>
+</html>
